@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles for scrollable background */
+body {
+    background-attachment: scroll !important;
+    background-size: cover;
+    background-position: center;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Make the main container scrollable */
+main {
+    background-attachment: scroll !important;
+    overflow-y: auto;
+    height: auto;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Ensure the blue background div also scrolls */
+.bg-blue-500 {
+    background-attachment: scroll !important;
+}
+
+/* Make sure all content containers are scrollable */
+.w-full.px-6.py-6.mx-auto {
+    background-attachment: scroll !important;
+    min-height: 100vh;
+}
+
+/* Ensure the gray background scrolls */
+.bg-gray-50 {
+    background-attachment: scroll !important;
+}
+
+/* Dark mode background scroll */
+.dark\:bg-slate-900 {
+    background-attachment: scroll !important;
+}
+
+/* Additional styles for better scrollable background */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Ensure all background elements scroll properly */
+* {
+    background-attachment: scroll !important;
+}
+
+/* Override any fixed background attachments */
+[style*="background-attachment: fixed"] {
+    background-attachment: scroll !important;
+}
+
+/* Ensure proper scrolling on mobile devices */
+@media (max-width: 768px) {
+    body,
+    main {
+        background-attachment: scroll !important;
+        overflow-x: hidden;
+    }
+}
