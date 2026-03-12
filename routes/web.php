@@ -21,7 +21,7 @@ Route::get('/dokter', [DokterController::class, 'index'])->name('dokter');
 // ===============================
 // Login / Logout
 // ===============================
-Route::get('/login', [LoginController::class, 'loginForm'])->name('login')->middleware('guest');
+Route::get('/login', [LoginController::class, 'loginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'authenticate']);
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout')->middleware('admin_or_user');
 
