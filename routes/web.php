@@ -17,6 +17,8 @@ use App\Http\Controllers\LoginController;
 // ===============================
 Route::get('/', [HomeController::class, '__invoke']);
 Route::get('/dokter', [DokterController::class, 'index'])->name('dokter');
+Route::get('/verify-otp', [UserController::class, 'showOtpForm']);
+Route::post('/verify-otp', [UserController::class, 'verifyOtp']);
 
 // ===============================
 // Login / Logout

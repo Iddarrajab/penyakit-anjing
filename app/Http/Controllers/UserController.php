@@ -3,33 +3,35 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Mail\SendOtpMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 
 class UserController extends Controller
 {
-    // Tampilkan daftar user (web)
+    // ===================== WEB =======================
+
     public function index()
     {
         $users = User::latest()->get();
         return view('user.index', compact('users'));
     }
 
-    // Tampilkan form tambah user (web)
     public function create()
     {
         return view('user.form', [
             'user' => new User(),
             'page_meta' => [
-                'title' => 'Create New User',
+                'title' => 'Register User',
                 'method' => 'POST',
                 'url' => route('user.store'),
-                'button' => 'Create'
+                'button' => 'Register'
             ],
         ]);
     }
 
-    // Simpan user baru (web)
+    // 🔥 STEP 1: REGISTER (TIDAK MASUK DATABASE)
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -39,20 +41,84 @@ class UserController extends Controller
             'password' => 'required|string|min:6|confirmed'
         ]);
 
-        $validated['password'] = Hash::make($validated['password']);
+        $otp = rand(100000, 999999);
 
-        User::create($validated);
+        // simpan ke session
+        session([
+            'register_data' => [
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'telepon' => $validated['telepon'],
+                'password' => Hash::make($validated['password']),
+                'otp' => $otp,
+                'otp_expired_at' => now()->addMinutes(5),
+            ]
+        ]);
 
-        return redirect()->route('login')->with('success', 'User berhasil ditambahkan.');
+        // kirim email OTP
+        try {
+            Mail::to($validated['email'])->send(new SendOtpMail($otp));
+        } catch (\Exception $e) {
+            return back()->with('error', 'Gagal kirim email: ' . $e->getMessage());
+        }
+
+        return redirect('/verify-otp')->with('success', 'OTP dikirim ke email');
     }
 
-    // Tampilkan satu user (web)
+    // ================= OTP =================
+
+    public function showOtpForm()
+    {
+        return view('auth.verify-otp');
+    }
+
+    // 🔥 STEP 2: VERIFIKASI OTP → SIMPAN KE DB
+    public function verifyOtp(Request $request)
+    {
+        $request->validate([
+            'otp' => 'required'
+        ]);
+
+        $data = session('register_data');
+
+        if (!$data) {
+            return redirect()->route('login')->with('error', 'Session habis, daftar ulang');
+        }
+
+        if ($request->otp != $data['otp']) {
+            return back()->with('error', 'OTP salah');
+        }
+
+        if (now()->gt($data['otp_expired_at'])) {
+            return back()->with('error', 'OTP sudah kadaluarsa');
+        }
+
+        // 🔥 simpan ke database
+        try {
+            User::create([
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'telepon' => $data['telepon'],
+                'password' => $data['password'],
+                'is_verified' => true
+            ]);
+        } catch (\Exception $e) {
+            return back()->with('error', 'Gagal simpan user: ' . $e->getMessage());
+        }
+
+        // hapus session
+        session()->forget('register_data');
+
+        return redirect()->route('login')->with('success', 'Registrasi berhasil');
+    }
+
+    // ================= CRUD =================
+
     public function show(User $user)
     {
         return view('user.show', compact('user'));
     }
 
-    // Tampilkan form edit user (web)
     public function edit(User $user)
     {
         return view('user.form', [
@@ -66,7 +132,6 @@ class UserController extends Controller
         ]);
     }
 
-    // Update user (web)
     public function update(Request $request, User $user)
     {
         $validated = $request->validate([
@@ -87,7 +152,6 @@ class UserController extends Controller
         return redirect()->route('home')->with('success', 'User berhasil diperbarui.');
     }
 
-    // Hapus user (web)
     public function destroy(User $user)
     {
         $user->delete();
@@ -96,17 +160,14 @@ class UserController extends Controller
 
     // ===================== API =======================
 
-    // GET /api/user - Ambil semua user
     public function apiIndex()
     {
-        $users = User::latest()->get();
         return response()->json([
             'status' => 'success',
-            'data' => $users
+            'data' => User::latest()->get()
         ]);
     }
 
-    // GET /api/user/{id} - Detail user
     public function apiShow($id)
     {
         $user = User::find($id);
@@ -118,7 +179,6 @@ class UserController extends Controller
         return response()->json(['status' => 'success', 'data' => $user]);
     }
 
-    // POST /api/user - Tambah user baru
     public function apiStore(Request $request)
     {
         $request->validate([
@@ -142,10 +202,10 @@ class UserController extends Controller
         ]);
     }
 
-    // PUT /api/user/{id} - Update user
     public function apiUpdate(Request $request, $id)
     {
         $user = User::find($id);
+
         if (!$user) {
             return response()->json(['status' => 'error', 'message' => 'User tidak ditemukan'], 404);
         }
@@ -158,6 +218,7 @@ class UserController extends Controller
         ]);
 
         $data = $request->only(['name', 'email', 'telepon']);
+
         if ($request->filled('password')) {
             $data['password'] = Hash::make($request->password);
         }
@@ -171,10 +232,10 @@ class UserController extends Controller
         ]);
     }
 
-    // DELETE /api/user/{id} - Hapus user
     public function apiDestroy($id)
     {
         $user = User::find($id);
+
         if (!$user) {
             return response()->json(['status' => 'error', 'message' => 'User tidak ditemukan'], 404);
         }
